@@ -1,0 +1,4 @@
+JP MISMATCH at row 110
+ src: 'あぁ、ルシリス様‥‥。'
+ ko : 'ああぁ、ルシリス様‥‥。'
+total mismatches 1

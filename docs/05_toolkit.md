@@ -91,6 +91,31 @@ CLANG="/c/Program Files/LLVM/bin/clang.exe"; CLANGXX=".../clang++.exe"
 - `corpus/glossary.md`(고유명사 한국어 표준표) 작성. 94개 스크립트를 sonnet 에이전트로 병렬 번역 →
   `corpus/ko/scNN.tsv`. 품질 양호(마크업·조사·글로서리 준수). 백그라운드 진행 중.
 
+## 한글 폰트 용량 제약 (핵심 발견)
+- byuu 폰트 시스템: `makevwf12`가 **6개 뱅크 bmp(fontv0-5.bmp, 각 256×80, 4bpp)** → 각 **80글리프
+  (16×13, 2bpp)** = **총 480글리프**. 폰트뱅크 태그 0x90~0x95(6개)로 전환.
+  스크립트 글자 인코딩: `byte = 문자 - 'A' + 0x0a` (text12i.c lookup_table).
+- **문제**: 번역 71/94 시점에 이미 **고유 한글 음절 1,020개**(완료 시 ~1,300 예상) ≫ 480. 부족.
+- 참고: **stock JP 엔진은 ~1,500글리프 용량**(00.tbl 236 + f7~fb 확장 5×255) — 한글에 충분하나
+  폰트가 압축됨. 내 corpus/ko도 stock 마크업 형식이라 stock 재삽입과 자연 정합.
+
+## 한글 통합 — 두 경로 (결정 필요)
+- **경로A: byuu 엔진 확장** — font 뱅크를 6→~16개로 늘리도록 ASM(font12.asm 등) 수정
+  (working xkas 있음) + fontvN.bmp 한글 글리프 생성 + 뱅크태그 확장 + 스크립트 인코더. 편집 쉬운 BMP.
+- **경로B: stock JP 엔진** — 용량 충분(~1,500). Korean 텍스트를 0x120000 포인터테이블에 재삽입
+  (dump_jp.py 역방향, 파이썬). **폰트만 문제**: 압축된 JP 한자폰트를 decomp→한글교체→recompress
+  (toolkit `decomp`/`dcconv` 활용 검토). corpus 마크업과 정합.
+- 다음 세션 초반에 경로 확정 후: 한글 글리프 렌더(도트 16×16) → 폰트 삽입 → 스크립트 인코딩 →
+  빌드 → emucap 인게임 검증(작은 문구부터).
+
+## ★한글 렌더링 인게임 검증 완료 ✅ (경로A)
+- `tools/kfont_overwrite.py`: makevwf12 출력 `build/fontvN.bin`의 글리프를 malgun.ttf 렌더 한글로 덮어씀
+  (byuu 글리프 포맷 16폭×13행 2bpp, 폭=16 고정). 6뱅크 전부 주입 후 xkas가 incbin → 빌드.
+- **결과: emucap에서 프롤로그 나레이션이 한글 글리프로 선명하게 렌더**(`mesen/out/kfont_01.png`).
+  → byuu 엔진에서 한글 16×13이 가독성 있게 표시됨을 실증. 전체 파이프라인(빌드→폰트→인게임) 검증 완료.
+- 남은 실제 한글화: ① 뱅크 확장(6→~16, ASM 수정)으로 ~1,300음절 수용 ② 실제 번역 음절로 폰트 생성
+  + 음절→(뱅크,인덱스) 매핑 ③ 스크립트 인코더(한글 텍스트→바이트열, 뱅크태그+제어코드) ④ 재빌드.
+
 ## 자산
 - 툴킷: `kor_patch/toolkit/derlangrisser/` (미러 클론).
 - 최종 영문 패치: `toolkit/derlangrisser/dl.ips`, 릴리스 zip: `toolkit/extracted/`.
