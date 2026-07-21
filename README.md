@@ -1,5 +1,5 @@
 # Langrisser2-SFC-KOR
- 데어랑그릿사 한글패치 v1.0
+ 데어랑그릿사 한글패치
  (Der Langrisser - Korean Translation Patch)
 
 ■ 소개
